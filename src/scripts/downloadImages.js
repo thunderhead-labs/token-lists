@@ -4,19 +4,22 @@ import { createWriteStream, existsSync, mkdirSync } from 'fs';
 import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
 
-const cowprotocolImgUrl = (chainId, address) => 'https://raw.githubusercontent.com/cowprotocol/token-lists/main/src/public/images/'+chainId+'/'+address+'/logo.png';
-const trustwalletImgUrl = (chainId, address) => 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/'+address+'/logo.png';
+
+
+const cowprotocolImgUrl = (chainId, address, symbol) => 'https://raw.githubusercontent.com/cowprotocol/token-lists/main/src/public/images/'+chainId+'/'+address+'/logo.png';
+const trustwalletImgUrl = (chainId, address, symbol) => 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/'+address+'/logo.png';
+const odosImgUrl = (chainId, address, symbol) => `https://assets.odos.xyz/tokens/${symbol.toLowerCase()}.webp`;
 
 function findTokenLogoUri(tokensList, chainId, symbol) {
   const token = tokensList.find(token => token.chainId === chainId && token.symbol.toUpperCase() === symbol.toUpperCase());
   return token ? token.logoURI : null;
 }
-
 async function main() {
   const missingTokens = [];
-  const imageSources = [
+  let imageSources = [
     cowprotocolImgUrl,
-    trustwalletImgUrl
+    trustwalletImgUrl,
+    odosImgUrl
   ];
 
   // Fetch the entire list of tokens from CoinGecko at the start
@@ -31,18 +34,26 @@ async function main() {
   }
   
   for (const token of OdosList.tokens) {
-    const { symbol, name, address, chainId } = token;
-    const filePath = path.join('../public/images', chainId.toString(), address, 'logo.png');
+    const { symbol, name, address, chainId, assetId } = token;
+    const filePath = path.join('../public/images', chainId.toString(), address.toLowerCase(), 'logo.png');
     let imageFetched = false;
 
-    // Attempt to find and download the logo from CoinGecko first
-    const coingeckoLogoUri = findTokenLogoUri(coingeckoTokensList, chainId, symbol);
+    // Attempt to find the logo from CoinGecko first, but do not download yet
+    const coingeckoLogoUri = findTokenLogoUri(coingeckoTokensList, chainId, assetId);
+    
+    // Reset imageSources for each token to ensure CoinGecko is only used as a fallback
+    imageSources = [
+      cowprotocolImgUrl,
+      trustwalletImgUrl
+    ];
+
     if (coingeckoLogoUri) {
-      imageSources.unshift(() => coingeckoLogoUri); // Prepend CoinGecko URI as a priority source
+      // Add CoinGecko URI as a fallback source if not found in initial sources
+      imageSources.push(() => coingeckoLogoUri);
     }
 
     for (const source of imageSources) {
-      let logoURI = typeof source === 'function' ? source(chainId, address) : source;
+      let logoURI = typeof source === 'function' ? source(chainId, address, symbol) : source;
       if (!logoURI) continue;
 
       const response = await fetch(logoURI);
@@ -80,4 +91,4 @@ async function main() {
   }
 }
 
-main().catch(console.error)
+main().catch(console.error);

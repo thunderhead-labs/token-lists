@@ -27,6 +27,7 @@
     "node-fetch": "^3.3.0",
     "p-retry": "^6.1.0",
     "p-throttle": "^5.1.0",
+    "token-lists": "git+https://github.com/thunderhead-labs/token-lists.git",
     "ts-node": "^10.9.1"
   },
   "devDependencies": {
